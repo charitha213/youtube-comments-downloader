@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Comments Downloader</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: bisque;
+        }
+
+        #container {
+            max-width: 800px;
+            margin: auto;
+            width: 900px;
+            margin-left: 40%;
+        }
+
+        #contain {
+            margin-left: 15%;
+        }
+
+        #result {
+            margin-top: 20px;
+        }
+
+        button {
+            background-color: blue;
+            color: white;
+            border-radius: 10px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        #videoUrl {
+            width: 700px;
+            height: 30px;
+            background-color: white;
+            color: black;
+            border-radius: 20px;
+        }
+
+        table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
+}
+
+th {
+    background-color: #f2f2f2;
+}
+
+#result table {
+    margin: 0; /* Override the margin for the specific table in the result container */
+}
+
+    </style>
+</head>
+<body>
+
+    <h1 style="text-align: center; font-weight: bold;">YouTube Comments Downloader</h1>
+    <div id="contain">
+        <label for="videoUrl">Enter YouTube Video URL:</label>
+        <input type="text" id="videoUrl" placeholder="Paste YouTube Video URL...">
+        <br>
+        <br>
+        <br>
+    </div>
+
+    <div id="container">
+        <button onclick="downloadComments()">Download Comments</button>
+
+        <div id="result">
+            <!-- Comment data will be displayed here -->
+        </div>
+    </div>
+
+    <script>
+        function downloadComments() {
+            var videoUrl = document.getElementById('videoUrl').value;
+            var videoId = extractVideoId(videoUrl);
+
+            if (videoId) {
+                fetchComments(videoId);
+            } else {
+                alert("Invalid YouTube Video URL. Please enter a valid URL.");
+            }
+        }
+
+        function extractVideoId(url) {
+            var match = url.match(/[?&]v=([^?&]+)/);
+            return match ? match[1] : null;
+        }
+
+        function fetchComments(videoId) {
+            var apiKey = "AIzaSyCynzNeOcAxfCQbH3rd3E7X_Unfr3lxpmQ"; // Replace with your actual YouTube API key
+
+            var apiUrl = `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&maxResults=100&key=${apiKey}`;
+
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    displayCommentsTable(data.items.slice(0, 5)); // Display only the first five rows
+                    downloadCSV(data.items);
+                })
+                .catch(error => {
+                    console.error('Error fetching comments:', error);
+                    alert('Error fetching comments. Please try again.');
+                });
+        }
+
+        function displayCommentsTable(comments) {
+            var table = document.createElement('table');
+            var thead = table.createTHead();
+            var tbody = table.createTBody();
+
+            // Create table header
+            var headerRow = thead.insertRow();
+            for (var key in comments[0].snippet.topLevelComment.snippet) {
+                var th = document.createElement('th');
+                th.appendChild(document.createTextNode(key));
+                headerRow.appendChild(th);
+            }
+
+            // Populate table body
+            comments.forEach(comment => {
+                var tr = tbody.insertRow();
+                for (var key in comment.snippet.topLevelComment.snippet) {
+                    var cell = tr.insertCell();
+                    cell.appendChild(document.createTextNode(comment.snippet.topLevelComment.snippet[key]));
+                }
+            });
+
+            // Append the table to the result container
+            var resultContainer = document.getElementById('result');
+            resultContainer.innerHTML = '';
+            resultContainer.appendChild(table);
+        }
+
+        function downloadCSV(comments) {
+            var csvData = "author,published_at,updated_at,like_count,text\n";
+            comments.forEach(comment => {
+                var snippet = comment.snippet.topLevelComment.snippet;
+                csvData += `${snippet.authorDisplayName},${snippet.publishedAt},${snippet.updatedAt},${snippet.likeCount},"${snippet.textDisplay.replace(/"/g, '""')}"\n`;
+            });
+
+            var blob = new Blob([csvData], { type: 'text/csv' });
+
+            // Create a download link for the CSV file
+            var downloadLink = document.createElement('a');
+            downloadLink.href = window.URL.createObjectURL(blob);
+            downloadLink.download = 'comments.csv';
+            downloadLink.innerHTML = '<button>Download CSV</button>';
+
+            // Append the download link to the result container
+            var resultContainer = document.getElementById('result');
+            resultContainer.appendChild(downloadLink);
+        }
+    </script>
+</body>
+</html>
